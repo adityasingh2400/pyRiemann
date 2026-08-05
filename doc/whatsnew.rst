@@ -30,6 +30,16 @@ v0.13.dev
   transport with the Bures-Wasserstein metric.
   :pr:`476` by :user:`AmitSubhash`
 
+- Fix parameter ``bandwidth`` of :class:`pyriemann.clustering.MeanShift`,
+  which raised an ``AttributeError`` when set to a value, and remove a
+  leftover ``print()`` in its bandwidth estimation.
+  Fix ``__init__`` of :class:`pyriemann.clustering.KmeansPerClassTransform`,
+  which did not store its parameters, so that ``get_params()``, ``clone()``
+  and ``cross_val_score()`` raised an ``AttributeError``. Parameters of
+  :class:`pyriemann.clustering.Kmeans` are now explicit in its signature,
+  replacing ``**params``.
+  :pr:`483` by :user:`adityasingh2400`
+
 v0.12 (July 2026)
 -----------------
 

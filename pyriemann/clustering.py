@@ -280,8 +280,38 @@ class KmeansPerClassTransform(SpdTransfMixin, BaseEstimator):
     ----------
     n_clusters : int, default=2
         Number of clusters.
-    **params : dict
-        The keyword arguments passed to :class:`pyriemann.clustering.Kmeans`.
+    max_iter : int, default=100
+        Maximum number of iteration to reach convergence.
+    metric : string | dict, default="riemann"
+        Metric used for mean estimation (for the list of supported metrics,
+        see :func:`pyriemann.geometry.mean.gmean`) and for distance estimation
+        (see :func:`pyriemann.geometry.distance.distance`).
+        The metric can be a dict with two keys, "mean" and "distance"
+        in order to pass different metrics.
+    random_state : None | integer | np.RandomState, default=None
+        The generator used to initialize the centroids. If an integer is
+        given, it fixes the seed. Defaults to the global numpy random
+        number generator.
+    init : "random" | ndarray, shape (n_clusters, n_channels, n_channels), \
+            default="random"
+        Method for initialization of centroids.
+        If "random", it chooses k matrices at random for the initial centroids.
+        If an ndarray is passed, it should be of shape
+        (n_clusters, n_channels, n_channels) and gives the initial centroids.
+    n_init : int, default=10
+        Number of time the k-means algorithm will be run with different
+        centroid seeds. The final results will be the best output of
+        n_init consecutive runs in terms of inertia.
+    n_jobs : int, default=1
+        Number of jobs to use for the computation. This works by computing
+        each of the n_init runs in parallel.
+        If -1 all CPUs are used. If 1 is given, no parallel computing code is
+        used at all, which is useful for debugging. For n_jobs below -1,
+        (n_cpus + 1 + n_jobs) are used. Thus for n_jobs = -2, all CPUs but one
+        are used.
+    tol : float, default=1e-4
+        Stopping criterion to stop convergence, representing the minimum
+        amount of change in labels between two iterations.
 
     Attributes
     ----------
@@ -291,16 +321,38 @@ class KmeansPerClassTransform(SpdTransfMixin, BaseEstimator):
         Centroids of each cluster of each class, with n_centroids <=
         n_clusters x n_classes.
 
+    Notes
+    -----
+    .. versionchanged:: 0.13
+        Replace ``**params`` by the explicit parameters of
+        :class:`pyriemann.clustering.Kmeans`, so that ``get_params()`` and
+        ``set_params()`` see them.
+
     See Also
     --------
     Kmeans
     """
 
-    def __init__(self, n_clusters=2, **params):
+    def __init__(
+        self,
+        n_clusters=2,
+        max_iter=100,
+        metric="riemann",
+        random_state=None,
+        init="random",
+        n_init=10,
+        n_jobs=1,
+        tol=1e-4,
+    ):
         """Init."""
-        params["n_clusters"] = n_clusters
-        self._km = Kmeans(**params)
-        self.metric = self._km.metric
+        self.n_clusters = n_clusters
+        self.max_iter = max_iter
+        self.metric = metric
+        self.random_state = random_state
+        self.init = init
+        self.n_init = n_init
+        self.n_jobs = n_jobs
+        self.tol = tol
 
     def fit(self, X, y):
         """Fit the clusters for each class.
@@ -318,6 +370,16 @@ class KmeansPerClassTransform(SpdTransfMixin, BaseEstimator):
             The KmeansPerClassTransform instance.
         """
         self.classes_ = np.unique(y)
+        self._km = Kmeans(
+            n_clusters=self.n_clusters,
+            max_iter=self.max_iter,
+            metric=self.metric,
+            random_state=self.random_state,
+            init=self.init,
+            n_init=self.n_init,
+            n_jobs=self.n_jobs,
+            tol=self.tol,
+        )
 
         covmeans = []
         for c in self.classes_:
@@ -339,7 +401,7 @@ class KmeansPerClassTransform(SpdTransfMixin, BaseEstimator):
         dist : ndarray, shape (n_matrices, n_centroids)
             Distance to each centroid according to the metric.
         """
-        mdm = MDM(metric=self.metric, n_jobs=self._km.n_jobs)
+        mdm = MDM(metric=self.metric, n_jobs=self.n_jobs)
         mdm._metric_mean, mdm._metric_dist = check_metric(self.metric)
         mdm.covmeans_ = self.covmeans_
         return mdm._predict_distances(X)
@@ -460,6 +522,8 @@ class MeanShift(SpdClustMixin, BaseEstimator):
         )
         if self.bandwidth is None:
             self._bandwidth = self._estimate_bandwidth(X, quantile=0.3)
+        else:
+            self._bandwidth = self.bandwidth
         self._bandwidth2 = self._bandwidth ** 2
 
         modes = Parallel(n_jobs=self.n_jobs)(
@@ -477,9 +541,7 @@ class MeanShift(SpdClustMixin, BaseEstimator):
         dist = pairwise_distance(X, None, metric=self._metric_dist)
         dist = np.triu(dist, 1)
         dist_sorted = np.sort(dist[dist > 0])
-        bandwidth = dist_sorted[floor(quantile * len(dist_sorted))]
-        print(f"MeanShift bandwidth={bandwidth:.3f}")
-        return bandwidth
+        return dist_sorted[floor(quantile * len(dist_sorted))]
 
     def _seek_mode(self, X, mean):
         for _ in range(self.max_iter):
