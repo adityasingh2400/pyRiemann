@@ -30,6 +30,12 @@ v0.13.dev
   transport with the Bures-Wasserstein metric.
   :pr:`476` by :user:`AmitSubhash`
 
+- Correct :func:`pyriemann.geometry.mean.mean_alm`,
+  :func:`pyriemann.geometry.mean.mean_bmp` and
+  :func:`pyriemann.geometry.mean.mean_cheap` for two matrices, which were
+  using a wrong position on the geodesic when ``sample_weight`` is not uniform.
+  :pr:`480` by :user:`adityasingh2400`
+
 v0.12 (July 2026)
 -----------------
 

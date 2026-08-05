@@ -142,8 +142,9 @@ def mean_alm(X, *, tol=1e-14, maxiter=100, sample_weight=None, **kwargs):
         return X[0]
 
     if n_matrices == 2:
-        alpha = sample_weight[1] / sample_weight[0] / 2
-        M = geodesic_riemann(X[0], X[1], alpha=alpha)
+        # weights are normalized, so the position on the geodesic from the
+        # first to the second matrix is the weight of the second one
+        M = geodesic_riemann(X[0], X[1], alpha=sample_weight[1])
         return M
 
     M = X
@@ -210,8 +211,9 @@ def mean_bmp(X, *, tol=1e-7, maxiter=50, sample_weight=None):
         return X[0]
 
     if n_matrices == 2:
-        alpha = sample_weight[1] / sample_weight[0] / 2
-        M = geodesic_riemann(X[0], X[1], alpha=alpha)
+        # weights are normalized, so the position on the geodesic from the
+        # first to the second matrix is the weight of the second one
+        M = geodesic_riemann(X[0], X[1], alpha=sample_weight[1])
         return M
 
     M = X
@@ -281,8 +283,9 @@ def mean_cheap(X, *, tol=1e-7, maxiter=50, sample_weight=None):
         return X[0]
 
     if n_matrices == 2:
-        alpha = sample_weight[1] / sample_weight[0] / 2
-        M = geodesic_riemann(X[0], X[1], alpha=alpha)
+        # weights are normalized, so the position on the geodesic from the
+        # first to the second matrix is the weight of the second one
+        M = geodesic_riemann(X[0], X[1], alpha=sample_weight[1])
         return M
 
     M = X
