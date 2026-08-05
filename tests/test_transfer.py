@@ -345,6 +345,31 @@ def test_tlscale_tangentspace(rndstate, get_weights, use_weight):
     assert X_new.shape == X.shape
 
 
+@pytest.mark.parametrize("estimator", [TLCenter, TLScale, TLRotate])
+@pytest.mark.parametrize("use_vectors", [True, False])
+def test_transformer_does_not_modify_inputs(rndstate, estimator, use_vectors):
+    """Test that fit_transform does not modify the inputs"""
+    if use_vectors:
+        X, y_enc = make_classification_transfer_tangspace(
+            rndstate, ["tgt", "src"], n_vectors_d=20, n_ts=4,
+        )
+    else:
+        X, y_enc = make_classification_transfer(
+            n_matrices=20, random_state=rndstate,
+        )
+        _, y, domain = decode_domains(X, y_enc)
+        domain = np.where(domain == "target_domain", "tgt", "src")
+        _, y_enc = encode_domains(X, y, domain)
+    X_copy = X.copy()
+
+    X_new = estimator(target_domain="tgt").fit_transform(X, y_enc)
+
+    assert_array_equal(X, X_copy)
+    # calling fit_transform twice on the same inputs gives the same outputs
+    X_new2 = estimator(target_domain="tgt").fit_transform(X, y_enc)
+    assert_array_equal(X_new, X_new2)
+
+
 @pytest.mark.parametrize("metric", ["euclid", "riemann"])
 @pytest.mark.parametrize("use_weight", [True, False])
 def test_tlrotate_manifold(rndstate, get_weights, metric, use_weight):
