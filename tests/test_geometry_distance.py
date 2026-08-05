@@ -26,6 +26,7 @@ from pyriemann.geometry.distance import (
     distance_thompson,
     distance_wasserstein,
     distance,
+    distance_functions,
     pairwise_distance,
     distance_mahalanobis,
 )
@@ -46,6 +47,16 @@ dists = [
     distance_riemann,
     distance_thompson,
     distance_wasserstein,
+]
+
+# Every distance function, including the ones not registered in
+# distance_functions because they take extra parameters. Built from the
+# registry so that a newly added metric is covered without editing this list.
+all_dists = [
+    pytest.param(dist, id=name) for name, dist in distance_functions.items()
+] + [
+    pytest.param(partial(distance_poweuclid, p=p), id=f"poweuclid_p{p}")
+    for p in [-2, -1, -0.5, 0, 0.42, 1, 2, 3]
 ]
 
 
@@ -92,7 +103,7 @@ def test_distance_metric_error(get_mats):
 
 
 @pytest.mark.parametrize("kind", ["spd", "hpd"])
-@pytest.mark.parametrize("dist", dists)
+@pytest.mark.parametrize("dist", all_dists)
 def test_distance_squared(kind, dist, backend, get_mats):
     n_channels = 5
     A, B = get_mats(2, n_channels, kind)
@@ -100,6 +111,15 @@ def test_distance_squared(kind, dist, backend, get_mats):
     assert d == approx(dist(A, B) ** 2)
     if backend == "numpy":
         assert isinstance(d, float)
+
+
+@pytest.mark.parametrize("kind", ["spd", "hpd"])
+@pytest.mark.parametrize("metric", list(distance_functions))
+def test_distance_squared_metric(kind, metric, get_mats):
+    n_channels = 5
+    A, B = get_mats(2, n_channels, kind)
+    d = distance(A, B, metric=metric, squared=True)
+    assert d == approx(distance(A, B, metric=metric) ** 2)
 
 
 @pytest.mark.parametrize("dist", dists)
@@ -303,6 +323,13 @@ def test_distance_poweuclid(kind, get_mats):
     assert distance_poweuclid(A, B, 0) == approx(distance_logeuclid(A, B))
     assert distance_poweuclid(A, B, -1) == approx(distance_harmonic(A, B))
     distance_poweuclid(A, B, 0.42)
+
+    for p, dist in [
+        (1, distance_euclid), (0, distance_logeuclid), (-1, distance_harmonic)
+    ]:
+        assert distance_poweuclid(A, B, p, squared=True) == approx(
+            dist(A, B, squared=True)
+        )
 
 
 @pytest.mark.parametrize("kind", ["spd", "hpd"])

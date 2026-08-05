@@ -467,11 +467,14 @@ def distance_poweuclid(A, B, p, squared=False):
     if p == -1:
         return distance_harmonic(A, B, squared=squared)
 
+    # distance_euclid already squared its output when squared=True, so the
+    # 1/|p| factor of the definition must be squared too.
+    scale = p**2 if squared else abs(p)
     return distance_euclid(
         powm(A, p),
         powm(B, p),
         squared=squared,
-    ) / abs(p)
+    ) / scale
 
 
 def distance_riemann(A, B, squared=False):

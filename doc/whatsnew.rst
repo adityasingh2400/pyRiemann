@@ -30,6 +30,11 @@ v0.13.dev
   transport with the Bures-Wasserstein metric.
   :pr:`476` by :user:`AmitSubhash`
 
+- Fix :func:`pyriemann.geometry.distance.distance_poweuclid` with
+  ``squared=True``, which scaled the squared distance by ``1/|p|`` instead of
+  ``1/p^2`` and therefore returned ``|p|`` times the squared distance.
+  :pr:`484` by :user:`adityasingh2400`
+
 v0.12 (July 2026)
 -----------------
 
