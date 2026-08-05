@@ -25,6 +25,11 @@ from pyriemann.geometry.distance import distance, distance_riemann
 from pyriemann.geometry.geodesic import geodesic
 from pyriemann.geometry.mean import gmean, mean_riemann
 from pyriemann.geometry.tangentspace import tangent_space
+from pyriemann.optimization.grassmann import (
+    _get_rotation_tangentspace,
+    _grad,
+    _loss,
+)
 from pyriemann.regression import KNearestNeighborRegressor, SVR
 from pyriemann.transfer import (
     decode_domains,
@@ -468,13 +473,91 @@ def test_tlrotate_tangentspace(rndstate, get_weights, expl_var,
 
     X_rot = tlrot.fit_transform(X, y_enc, sample_weight=weights)
     assert X_rot.shape == X.shape
-    assert_array_equal(
-        X_rot[domain == "target_domain"],
-        X[domain == "target_domain"],
-    )
+    assert_array_equal(X_rot[domain == "tgt"], X[domain == "tgt"])
 
     X_rot = tlrot.transform(X)
     assert_array_equal(X_rot, X)
+
+
+def test_tlrotate_tangentspace_recovers_rotation(rndstate):
+    """Test that rotating vectors brings source domain onto target domain"""
+    n_ts, n_vectors_d = 4, 60
+    X_src = rndstate.randn(n_vectors_d, n_ts)
+    y = rndstate.randint(0, 2, size=n_vectors_d)
+    X_src += 3 * np.take(np.eye(n_ts)[:2], y, axis=0)  # separate classes
+    rotation = np.linalg.qr(rndstate.randn(n_ts, n_ts))[0]
+    X_tgt = X_src @ rotation
+
+    X = np.concatenate([X_tgt, X_src])
+    domain = np.array(n_vectors_d * ["tgt"] + n_vectors_d * ["src"])
+    _, y_enc = encode_domains(X, np.concatenate([y, y]), domain)
+
+    tlrot = TLRotate(target_domain="tgt", n_components=1, n_clusters=2)
+    X_rot = tlrot.fit_transform(X, y_enc)
+
+    # the rotation must map the source domain onto the target domain
+    for label in np.unique(y):
+        m_tgt = np.mean(X_tgt[y == label], axis=0)
+        dist_before = np.linalg.norm(
+            np.mean(X_src[y == label], axis=0) - m_tgt
+        )
+        dist_after = np.linalg.norm(
+            np.mean(X_rot[domain == "src"][y == label], axis=0) - m_tgt
+        )
+        assert dist_after < dist_before / 10
+
+
+@pytest.mark.parametrize("expl_var", [0.999, 4])
+def test_get_rotation_tangentspace(rndstate, expl_var):
+    """Test that Procrustes analysis maps source onto target"""
+    n_vectors, n_ts = 20, 4
+    X_source = rndstate.randn(n_vectors, n_ts)
+    rotation = np.linalg.qr(rndstate.randn(n_ts, n_ts))[0]
+    X_target = X_source @ rotation
+
+    Q = _get_rotation_tangentspace(X_source, X_target, expl_var)
+
+    assert_array_almost_equal(Q, rotation)
+    assert_array_almost_equal(X_source @ Q, X_target)
+
+
+@pytest.mark.parametrize("metric", ["euclid", "riemann"])
+def test_grassmann_loss(rndstate, metric):
+    """Test that loss is the weighted sum of squared distances"""
+    n_matrices, n_channels = 3, 4
+    X = make_matrices(n_matrices, n_channels, "spd", rs=rndstate)
+    Y = make_matrices(n_matrices, n_channels, "spd", rs=rndstate)
+    weights = np.array([0.5, 0.3, 0.2])
+    Q = np.linalg.qr(rndstate.randn(n_channels, n_channels))[0]
+
+    assert _loss(Q, X, Y, weights, metric=metric) == approx(
+        weights @ distance(X, Q @ Y @ Q.T, metric=metric) ** 2
+    )
+
+
+@pytest.mark.parametrize("metric", ["euclid", "riemann"])
+def test_grassmann_grad(rndstate, metric):
+    """Test that gradient is the derivative of the loss"""
+    n_matrices, n_channels = 3, 4
+    X = make_matrices(n_matrices, n_channels, "spd", rs=rndstate)
+    Y = make_matrices(n_matrices, n_channels, "spd", rs=rndstate)
+    weights = np.array([0.5, 0.3, 0.2])
+    Q = np.linalg.qr(rndstate.randn(n_channels, n_channels))[0]
+
+    eps = 1e-6
+    grad_num = np.zeros((n_channels, n_channels))
+    for i in range(n_channels):
+        for j in range(n_channels):
+            step = np.zeros((n_channels, n_channels))
+            step[i, j] = eps
+            grad_num[i, j] = (
+                _loss(Q + step, X, Y, weights, metric=metric)
+                - _loss(Q - step, X, Y, weights, metric=metric)
+            ) / (2 * eps)
+
+    grad = _grad(Q, X, Y, weights, metric=metric)
+    assert grad.dtype == grad_num.dtype
+    assert_array_almost_equal(grad, grad_num, decimal=5)
 
 
 ###############################################################################
