@@ -30,6 +30,13 @@ v0.13.dev
   transport with the Bures-Wasserstein metric.
   :pr:`476` by :user:`AmitSubhash`
 
+- Deprecate ``rjd`` renamed into :func:`pyriemann.geometry.ajd.jade`, and transpose outputed diagonalizer.
+  :pr:`474` by :user:`gaoflow`
+
+- Update ``array-api-compat`` from >=1.11 to >=1.14, and replace the deprecated
+  ``array_api_extra.expand_dims`` by the namespace-native ``expand_dims``.
+  :pr:`478` by :user:`AmitSubhash`
+
 - Fix ``fit_transform()`` of :class:`pyriemann.transfer.TLScale`, which
   modified the input matrices in-place, so that two identical calls on the
   same array returned different outputs.
@@ -434,7 +441,7 @@ v0.4 (Feb 2023)
   then used for ``transform()`` as well as for ``inverse_transform()``.
   :pr:`195` by :user:`qbarthelemy`
 
-- Enhance AJD: add ``init`` to :func:`pyriemann.geometry.ajd.ajd_pham` and :func:`pyriemann.geometry.ajd.rjd`,
+- Enhance AJD: add ``init`` to :func:`pyriemann.geometry.ajd.ajd_pham` and :func:`pyriemann.geometry.ajd.jade`,
   add ``warm_restart`` to :class:`pyriemann.spatialfilters.AJDC`.
   :pr:`196` by :user:`qbarthelemy`
 
