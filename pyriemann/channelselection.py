@@ -7,7 +7,6 @@ from .geometry.distance import distance
 
 
 class ElectrodeSelection(TransformerMixin, BaseEstimator):
-
     """Channel selection based on a Riemannian geometry criterion.
 
     For each class, a centroid is estimated, and the channel selection is based
@@ -39,13 +38,23 @@ class ElectrodeSelection(TransformerMixin, BaseEstimator):
         Centroids for each class.
     dist_ : list
         Distance at each iteration.
-    self.subelec_ : list
+    subelec_ : list of len nelec
         Indices of selected channels.
+
+    Notes
+    -----
+    .. versionadded:: 0.1
+    .. versionchanged:: 0.2.3
+        Add parameter ``sample_weight`` to ``fit()``.
+    .. versionchanged:: 0.8
+        Add ``fit_transform()``.
+    .. versionchanged:: 0.13
+        Add support for HPD matrices.
 
     See Also
     --------
-    Kmeans
-    FgMDM
+    :class:`pyriemann.clustering.Kmeans`
+    :class:`pyriemann.classification.FgMDM`
 
     References
     ----------
@@ -68,11 +77,13 @@ class ElectrodeSelection(TransformerMixin, BaseEstimator):
         Parameters
         ----------
         X : ndarray, shape (n_matrices, n_channels, n_channels)
-            Set of SPD matrices.
+            Set of SPD/HPD matrices.
         y : None | ndarray, shape (n_matrices,), default=None
             Labels for each matrix.
         sample_weight : None | ndarray, shape (n_matrices,), default=None
             Weights for each matrix. If None, it uses equal weights.
+
+            .. versionadded:: 0.2.3
 
         Returns
         -------
@@ -115,12 +126,12 @@ class ElectrodeSelection(TransformerMixin, BaseEstimator):
         Parameters
         ----------
         X : ndarray, shape (n_matrices, n_channels, n_channels)
-            Set of SPD matrices.
+            Set of SPD/HPD matrices.
 
         Returns
         -------
         X_new : ndarray, shape (n_matrices, n_elec, n_elec)
-            Set of SPD matrices after reduction of the number of channels.
+            Set of SPD/HPD matrices after reduction of the number of channels.
         """
         return X[:, self.subelec_, :][:, :, self.subelec_]
 
@@ -130,7 +141,7 @@ class ElectrodeSelection(TransformerMixin, BaseEstimator):
         Parameters
         ----------
         X : ndarray, shape (n_matrices, n_channels, n_channels)
-            Set of SPD matrices.
+            Set of SPD/HPD matrices.
         y : None | ndarray, shape (n_matrices,), default=None
             Labels for each matrix.
         sample_weight : None | ndarray, shape (n_matrices,), default=None
@@ -139,7 +150,11 @@ class ElectrodeSelection(TransformerMixin, BaseEstimator):
         Returns
         -------
         X_new : ndarray, shape (n_matrices, n_elec, n_elec)
-            Set of SPD matrices after reduction of the number of channels.
+            Set of SPD/HPD matrices after reduction of the number of channels.
+
+        Notes
+        -----
+        .. versionadded:: 0.8
         """
         return self.fit(X, y, sample_weight=sample_weight).transform(X)
 
@@ -151,6 +166,10 @@ class FlatChannelRemover(TransformerMixin, BaseEstimator):
     ----------
     channels_ : ndarray, shape (n_good_channels,)
         Indices of the non-flat channels.
+
+    Notes
+    -----
+    .. versionadded:: 0.2.5
     """
 
     def fit(self, X, y=None):
