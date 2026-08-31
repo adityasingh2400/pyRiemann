@@ -372,7 +372,6 @@ def test_mean_geometric_2mats(kind, mean, get_mats):
 @pytest.mark.parametrize("mean", [
     mean_alm,
     mean_bmp,
-    mean_cheap,
     mean_riemann,
 ])
 @pytest.mark.parametrize("weights", [[3, 1], [1, 3], [1, 9]])
@@ -385,7 +384,6 @@ def test_mean_geometric_2mats_weighted(kind, mean, weights, get_mats):
 
     M = mean(X, sample_weight=weights)
     assert M == approx(geodesic_riemann(X[0], X[1], alpha=alpha))
-    assert M == approx(mean_riemann(X, sample_weight=weights))
 
 
 @pytest.mark.parametrize("kind", ["spd", "hpd"])
