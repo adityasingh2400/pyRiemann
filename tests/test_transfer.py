@@ -22,6 +22,7 @@ from pyriemann.classification import (
     MeanField,
 )
 from pyriemann.geometry.distance import distance, distance_riemann
+from pyriemann.geometry.geodesic import geodesic
 from pyriemann.geometry.mean import gmean, mean_riemann
 from pyriemann.geometry.tangentspace import tangent_space
 from pyriemann.regression import KNearestNeighborRegressor, SVR
@@ -39,6 +40,7 @@ from pyriemann.transfer import (
 )
 from pyriemann.utils._check import check_weights
 
+pytestmark = pytest.mark.numpy_only
 rndstate = 1234
 
 
@@ -432,10 +434,11 @@ def test_tlrotate_manifold(rndstate, get_weights, metric, use_weight):
     assert_array_equal(X_rot, X_rct)
 
 
+@pytest.mark.parametrize("expl_var", [0.97, 1, 3])
 @pytest.mark.parametrize("n_components", [1, 3, "max"])
 @pytest.mark.parametrize("n_clusters", [1, 2, 5])
 @pytest.mark.parametrize("use_weight", [True, False])
-def test_tlrotate_tangentspace(rndstate, get_weights,
+def test_tlrotate_tangentspace(rndstate, get_weights, expl_var,
                                n_components, n_clusters, use_weight):
     """Test rotating vectors"""
     n_ts = 10
@@ -454,6 +457,7 @@ def test_tlrotate_tangentspace(rndstate, get_weights,
 
     tlrot = TLRotate(
         target_domain="tgt",
+        expl_var=expl_var,
         n_components=n_components,
         n_clusters=n_clusters,
     )
@@ -582,8 +586,6 @@ def test_tlclassifier_tangentspace(rndstate, clf, domains_weight):
 def tlclassifier(clf, X, y_enc, domains_weight, n_classes=2):
     n_inputs = X.shape[0]
 
-    if hasattr(clf, "probability"):
-        clf.set_params(**{"probability": True})
     tlclf = TLClassifier(
         target_domain="target_domain",
         estimator=clf,
@@ -675,11 +677,11 @@ def tlregressor(reg, X, y_enc, domains_weights):
 ###############################################################################
 
 
-@pytest.mark.parametrize("domain_tradeoff", [0, 1])  # 0.5
+@pytest.mark.parametrize("kind", ["spd", "hpd"])
+@pytest.mark.parametrize("domain_tradeoff", [0, 0.5, 1])
 @pytest.mark.parametrize("metric", ["euclid", "logeuclid", "riemann"])
-@pytest.mark.parametrize("n_jobs", [-1, 1, 2])
-def test_mdwm(rndstate, domain_tradeoff, metric, n_jobs):
-    """Test for MDWM"""
+@pytest.mark.parametrize("n_jobs", [-1, 2])
+def test_mdwm(kind, domain_tradeoff, metric, n_jobs, rndstate, get_mats):
     n_classes, n_matrices = 2, 40
     X, y_enc = make_classification_transfer(
         n_matrices=n_matrices // 4,
@@ -687,6 +689,8 @@ def test_mdwm(rndstate, domain_tradeoff, metric, n_jobs):
         class_disp=1.0,
         random_state=rndstate,
     )
+    if kind == "hpd":
+        X = get_mats(n_matrices, 2, "hpd")
 
     clf = MDWM(
         domain_tradeoff=domain_tradeoff,
@@ -707,38 +711,41 @@ def test_mdwm(rndstate, domain_tradeoff, metric, n_jobs):
     y_target = y[domain == "target_domain"]
 
     if domain_tradeoff == 0.0:
-        X_0 = X_source[y_source == clf.classes_[0]]
-        X_1 = X_source[y_source == clf.classes_[1]]
+        R_0 = gmean(X_source[y_source == clf.classes_[0]], metric=metric)
+        R_1 = gmean(X_source[y_source == clf.classes_[1]], metric=metric)
     elif domain_tradeoff == 1.0:
-        X_0 = X_target[y_target == clf.classes_[0]]
-        X_1 = X_target[y_target == clf.classes_[1]]
+        R_0 = gmean(X_target[y_target == clf.classes_[0]], metric=metric)
+        R_1 = gmean(X_target[y_target == clf.classes_[1]], metric=metric)
     elif domain_tradeoff == 0.5:
-        X_0 = X[y == clf.classes_[0]]
-        X_1 = X[y == clf.classes_[1]]
-    M_0 = gmean(X_0, metric=metric)
-    assert clf.covmeans_[0] == pytest.approx(M_0)
-    M_1 = gmean(X_1, metric=metric)
-    assert clf.covmeans_[1] == pytest.approx(M_1)
-
-    # test predict
-    predicted = clf.predict(X)
-    assert predicted.shape == (n_matrices,)
-
-    # test predict_proba
-    probabilities = clf.predict_proba(X)
-    assert probabilities.shape == (n_matrices, n_classes)
-    assert probabilities.sum(axis=1) == approx(np.ones(n_matrices))
+        Ms_0 = gmean(X_source[y_source == clf.classes_[0]], metric=metric)
+        Ms_1 = gmean(X_source[y_source == clf.classes_[1]], metric=metric)
+        Mt_0 = gmean(X_target[y_target == clf.classes_[0]], metric=metric)
+        Mt_1 = gmean(X_target[y_target == clf.classes_[1]], metric=metric)
+        R_0 = geodesic(Ms_0, Mt_0, 0.5, metric=metric)
+        R_1 = geodesic(Ms_1, Mt_1, 0.5, metric=metric)
+    assert clf.covmeans_[0] == pytest.approx(R_0)
+    assert clf.covmeans_[1] == pytest.approx(R_1)
 
     # test transform
     dists = clf.transform(X)
     assert dists.shape == (n_matrices, n_classes)
 
+    # test predict_proba
+    prob = clf.predict_proba(X)
+    assert prob.shape == (n_matrices, n_classes)
+    assert prob.sum(axis=1) == approx(np.ones(n_matrices))
+
+    # test predict
+    predicted = clf.predict(X)
+    assert predicted.shape == (n_matrices,)
+
     # test score
-    clf.score(X, y_enc)
+    score = clf.score(X, y_enc)
+    assert isinstance(score, float)
 
 
 def test_mdwm_weights(rndstate, get_weights):
-    n_classes, n_matrices = 2, 40
+    n_matrices = 40
     X, y_enc = make_classification_transfer(
         n_matrices=n_matrices // 4,
         class_sep=5,
@@ -752,6 +759,6 @@ def test_mdwm_weights(rndstate, get_weights):
         metric="riemann",
     )
 
-    clf.fit(X, y_enc, sample_weight=get_weights(n_matrices // n_classes))
+    clf.fit(X, y_enc, sample_weight=get_weights(n_matrices // 2))
 
     clf.score(X, y_enc, sample_weight=get_weights(n_matrices))

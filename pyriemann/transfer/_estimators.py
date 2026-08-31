@@ -140,10 +140,10 @@ class TLCenter(TransformerMixin, BaseEstimator):
             ``transform()`` recenters inputs to the specified target domain.
 
         .. versionchanged:: 0.7
-            Add ``""`` as a special value.
+            Add ``""`` option to recenter inputs to the last fitted domain.
         .. versionchanged:: 0.13
-            Add ``"transductive"`` as a special value.
-            Replace special value ``""`` by ``"last"``.
+            Add ``"transductive"`` option for transductive estimation of
+            centers. Replace option ``""`` by ``"last"``.
     metric : str, default="riemann"
         For inputs in manifold,
         metric used for mean estimation. For the list of supported metrics,
@@ -157,15 +157,22 @@ class TLCenter(TransformerMixin, BaseEstimator):
         Dictionary with key=domain_name and value=domain_center.
         Not used by ``transform()`` when ``target_domain="transductive"``.
 
+        .. versionchanged:: 0.8
+            Rename ``recenter_`` into ``centers_``.
+
     Notes
     -----
     .. versionadded:: 0.4
+    .. versionchanged:: 0.6
+        Add parameter ``sample_weight`` to ``fit()`` and ``fit_transform()``.
     .. versionchanged:: 0.7
-        Add possibility to recenter inputs to the last fitted domain.
+        Add ``""`` option to parameter ``target_domain``,
+        to recenter inputs to the last fitted domain.
     .. versionchanged:: 0.8
         Add support for tangent space centering.
     .. versionchanged:: 0.13
-        Add transductive estimation of centers.
+        Add ``"transductive"`` option to parameter ``target_domain``,
+        for transductive estimation of centers.
 
     References
     ----------
@@ -206,6 +213,8 @@ class TLCenter(TransformerMixin, BaseEstimator):
         sample_weight : None | ndarray, shape (n_matrices,) or \
                 shape (n_vectors,), default=None
             Weights for each matrix or vector. If None, it uses equal weights.
+
+            .. versionadded:: 0.6
 
         Returns
         -------
@@ -308,6 +317,8 @@ class TLCenter(TransformerMixin, BaseEstimator):
                 shape (n_vectors,), default=None
             Weights for each matrix or vector. If None, it uses equal weights.
 
+            .. versionadded:: 0.6
+
         Returns
         -------
         X_new : ndarray, shape (n_matrices, n_channels, n_channels) or \
@@ -367,15 +378,21 @@ class TLScale(TransformerMixin, BaseEstimator):
     scales_ : dict
         Dictionary with key=domain_name and value=domain_scale.
 
-    See Also
-    --------
-    TLCenter
+        .. versionchanged:: 0.8
+            Rename ``dispersions_`` into ``scales_``.
 
     Notes
     -----
     .. versionadded:: 0.4
+    .. versionchanged:: 0.6
+        Add parameter ``sample_weight`` to ``fit()`` and ``fit_transform()``.
     .. versionchanged:: 0.8
+        Rename ``TLStretch`` into ``TLScale``.
         Add support for tangent space scaling.
+
+    See Also
+    --------
+    TLCenter
 
     References
     ----------
@@ -416,6 +433,8 @@ class TLScale(TransformerMixin, BaseEstimator):
         sample_weight : None | ndarray, shape (n_matrices,) or \
                 shape (n_vectors,), default=None
             Weights for each matrix or vector. If None, it uses equal weights.
+
+            .. versionadded:: 0.6
 
         Returns
         -------
@@ -528,6 +547,8 @@ class TLScale(TransformerMixin, BaseEstimator):
                 shape (n_vectors,), default=None
             Weights for each matrix or vector. If None, it uses equal weights.
 
+            .. versionadded:: 0.6
+
         Returns
         -------
         X_new : ndarray, shape (n_matrices, n_channels, n_channels) or \
@@ -610,24 +631,33 @@ class TLRotate(TransformerMixin, BaseEstimator):
     tol_step : float, default=1e-9
         For inputs in manifold, stopping criterion based on the norm of
         the descent direction.
+
+        .. versionadded:: 0.11
     maxiter : int, default=10_000
         For inputs in manifold, maximum number of iterations in the
         optimization procedure.
+
+        .. versionadded:: 0.11
 
     Attributes
     ----------
     rotations_ : dict
         Dictionary with key=domain_name and value=domain_rotation_matrix.
 
-    See Also
-    --------
-    TLCenter
-
     Notes
     -----
     .. versionadded:: 0.4
+    .. versionchanged:: 0.6
+        Add parameter ``sample_weight`` to ``fit()`` and ``fit_transform()``.
     .. versionchanged:: 0.8
         Add support for tangent space rotation.
+        Add support for multisource domains in tangent space.
+    .. versionchanged:: 0.11
+        Add parameters ``tol_step`` and ``maxiter``.
+
+    See Also
+    --------
+    TLCenter
 
     References
     ----------
@@ -685,6 +715,8 @@ class TLRotate(TransformerMixin, BaseEstimator):
         sample_weight : None | ndarray, shape (n_matrices,) or \
                 shape (n_vectors,), default=None
             Weights for each matrix or vector. If None, it uses equal weights.
+
+            .. versionadded:: 0.6
 
         Returns
         -------
@@ -880,6 +912,8 @@ class TLRotate(TransformerMixin, BaseEstimator):
                 shape (n_vectors,), default=None
             Weights for each matrix or vector. If None, it uses equal weights.
 
+            .. versionadded:: 0.6
+
         Returns
         -------
         X_new : ndarray, shape (n_matrices, n_classes)
@@ -934,6 +968,8 @@ class TLEstimator(BaseEstimator):
     Notes
     -----
     .. versionadded:: 0.4
+    .. versionchanged:: 0.8
+        Add support for tangent space estimation.
     """
 
     def __init__(self, target_domain, estimator, domain_weight=None):
@@ -1029,11 +1065,13 @@ class TLClassifier(TLEstimator):
 
     See Also
     --------
-    TLRegressor
+    MDWM
 
     Notes
     -----
     .. versionadded:: 0.4
+    .. versionchanged:: 0.8
+        Add support for tangent space classification.
     """
 
     def fit(self, X, y_enc):
@@ -1112,13 +1150,11 @@ class TLRegressor(TLEstimator):
         The dict contains key=domain_name and value=weight_to_assign.
         If None, it uses equal weights.
 
-    See Also
-    --------
-    TLClassifier
-
     Notes
     -----
     .. versionadded:: 0.4
+    .. versionchanged:: 0.8
+        Add support for tangent space regression.
     """
 
     def fit(self, X, y_enc):
@@ -1171,8 +1207,8 @@ class MDWM(MDM):
 
     Classification by nearest centroid. For each of the given classes, a
     centroid is estimated, according to the chosen metric, as a weighted mean
-    of SPD matrices from the source domain, combined with the class centroid of
-    the target domain [1]_ [2]_.
+    of SPD/HPD matrices from the source domain, combined with the class
+    centroid of the target domain [1]_ [2]_.
     For classification, a given new matrix is attibuted to the class whose
     centroid is the nearest according to the chosen metric.
 
@@ -1185,9 +1221,9 @@ class MDWM(MDM):
         domain are used.
         At 1, this is a calibration-free system as no matrices are required
         from the source domain.
-    target_domain : string
+    target_domain : str
         Name of the target domain in extended labels.
-    metric : string | dict, default="riemann"
+    metric : str | dict, default="riemann"
         Metric used for mean estimation (for the list of supported metrics,
         see :func:`pyriemann.geometry.mean.gmean`) and for distance estimation
         (see :func:`pyriemann.geometry.distance.distance`).
@@ -1208,9 +1244,18 @@ class MDWM(MDM):
     covmeans_ : ndarray, shape (n_classes, n_channels, n_channels)
         Centroids for each class.
 
+        .. versionchanged:: 0.6
+            Change list of ndarrays into a ndarray.
+
+    Notes
+    -----
+    .. versionadded:: 0.4
+    .. versionchanged:: 0.13
+        Add support for HPD matrices.
+
     See Also
     --------
-    MDM
+    :class:`pyriemann.classification.MDM`
 
     References
     ----------
@@ -1225,10 +1270,6 @@ class MDWM(MDM):
         S. Khazem, S. Chevallier, Q. Barthelemy, K. Haroun and C. Nous, 10th
         International IEEE/EMBS Conference on Neural Engineering (NER), pp.
         523-526. IEEE, 2021.
-
-    Notes
-    -----
-    .. versionadded:: 0.4
     """
 
     def __init__(
@@ -1250,7 +1291,7 @@ class MDWM(MDM):
         Parameters
         ----------
         X : ndarray, shape (n_matrices, n_channels, n_channels)
-            Set of SPD matrices from source and target domain.
+            Set of SPD/HPD matrices from source and target domain.
         y_enc : ndarray, shape (n_matrices,)
             Extended labels for each matrix.
         sample_weight : None | ndarray, shape (n_matrices_source,), \
@@ -1317,12 +1358,12 @@ class MDWM(MDM):
         return self
 
     def score(self, X, y_enc, sample_weight=None):
-        """Return the mean accuracy on the given test data and labels.
+        """Return the mean accuracy on the given test matrices and labels.
 
         Parameters
         ----------
         X : ndarray, shape (n_matrices, n_channels, n_channels)
-            Test set of SPD matrices.
+            Test set of SPD/HPD matrices.
         y_enc : ndarray, shape (n_matrices,)
             Extended true labels for each matrix.
         sample_weight : None | ndarray, shape (n_matrices,), default=None
