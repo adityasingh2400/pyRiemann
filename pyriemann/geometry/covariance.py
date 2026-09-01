@@ -138,9 +138,9 @@ def covariance_mest(X, m_estimator, *, init=None, tol=10e-3, n_iter_max=50,
     m_estimator : {"hub", "stu", "tyl"}
         Type of M-estimator:
 
-        - "hub" for Huber's M-estimator [2]_;
-        - "stu" for Student-t's M-estimator [3]_;
-        - "tyl" for Tyler's M-estimator [4]_.
+        * "hub" for Huber's M-estimator [2]_;
+        * "stu" for Student-t's M-estimator [3]_;
+        * "tyl" for Tyler's M-estimator [4]_.
     init : None | ndarray, shape (n_channels, n_channels), default=None
         A matrix used to initialize the algorithm.
         If None, the sample covariance matrix is used.
@@ -366,7 +366,7 @@ def covariance_scm(X, *, assume_centered=False, weights=None):
     -----
     .. versionadded:: 0.6
     .. versionchanged:: 0.11
-        Add weights.
+        Add parameter ``weights``.
     .. versionchanged:: 0.12
         Add support for NumPy and PyTorch.
 
@@ -418,7 +418,7 @@ def covariances(X, estimator="cov", **kwds):
     ----------
     X : ndarray, shape (..., n_channels, n_times)
         Multi-channel time-series, real or complex-valued.
-    estimator : string | callable, default="cov"
+    estimator : str | callable, default="cov"
         Covariance matrix estimator [est]_:
 
         * "corr" for correlation coefficient matrix [corr]_,
@@ -442,6 +442,8 @@ def covariances(X, estimator="cov", **kwds):
     **kwds : dict
         Any further parameters are passed directly to the covariance estimator.
 
+        .. versionadded:: 0.4
+
     Returns
     -------
     covmats : ndarray, shape (..., n_channels, n_channels)
@@ -449,6 +451,13 @@ def covariances(X, estimator="cov", **kwds):
 
     Notes
     -----
+    .. versionadded:: 0.1
+    .. versionchanged:: 0.2.2
+        Rename parameter ``est`` into ``estimator``.
+    .. versionchanged:: 0.4
+        Add support for ``"hub"``, ``"stu"`` and ``"tyl"`` M-estimators.
+    .. versionchanged:: 0.6
+        Add support for complex-valued inputs.
     .. versionchanged:: 0.12
         Add support for NumPy and PyTorch.
 
@@ -487,16 +496,19 @@ def covariances_EP(X, P, estimator="cov", **kwds):
     **kwds : optional keyword parameters
         Any further parameters are passed directly to the covariance estimator.
 
-    Notes
-    -----
-    .. versionchanged:: 0.12
-        Add support for NumPy and PyTorch.
-
     Returns
     -------
     covmats : ndarray, shape (..., n_channels + n_channels_proto, \
             n_channels + n_channels_proto)
         Covariance matrices.
+
+    Notes
+    -----
+    .. versionadded:: 0.1
+    .. versionchanged:: 0.2.2
+        Rename parameter ``est`` into ``estimator``.
+    .. versionchanged:: 0.12
+        Add support for NumPy and PyTorch.
     """
     est = _check_cov_estimator(estimator)
     xp = get_namespace(X, P)
@@ -602,15 +614,15 @@ def block_covariances(X, blocks, estimator="cov", **kwds):
     **kwds : optional keyword parameters
         Any further parameters are passed directly to the covariance estimator.
 
-    Notes
-    -----
-    .. versionchanged:: 0.12
-        Add support for NumPy and PyTorch.
-
     Returns
     -------
     covmats : ndarray, shape (..., n_channels, n_channels)
         Block diagonal covariance matrices.
+
+    Notes
+    -----
+    .. versionchanged:: 0.12
+        Add support for NumPy and PyTorch.
     """
     est = _check_cov_estimator(estimator)
     xp = get_namespace(X)
@@ -645,6 +657,7 @@ def eegtocov(sig, window=128, overlapp=0.5, padding=True, estimator="cov"):
 
     Notes
     -----
+    .. versionadded:: 0.1
     .. versionchanged:: 0.12
         Add support for NumPy and PyTorch.
     """
@@ -848,6 +861,8 @@ def coherence(X, window=128, overlap=0.75, fmin=None, fmax=None, fs=None,
           capturing out-of-phase correlation but still affected by in-phase
           correlation.
 
+        .. versionadded:: 0.3
+
     Returns
     -------
     C : ndarray, shape (..., n_channels, n_channels, n_freqs)
@@ -859,7 +874,8 @@ def coherence(X, window=128, overlap=0.75, fmin=None, fmax=None, fs=None,
     -----
     .. versionadded:: 0.2.4
     .. versionchanged:: 0.3
-        Add support for lagged and imaginary coherences.
+        Add parameter ``coh`` for instantaneous, lagged and imaginary
+        coherences.
 
     References
     ----------
@@ -953,16 +969,21 @@ def normalize(X, norm):
         * "trace": trace of normalized matrices is 1;
         * "determinant": determinant of normalized matrices is +/- 1.
 
-    Notes
-    -----
-    .. versionadded:: 0.2.7
-    .. versionchanged:: 0.12
-        Add support for NumPy and PyTorch.
+        .. versionchanged:: 0.3
+            Add ``"corr"`` option.
 
     Returns
     -------
-    Xn : ndarray, shape (..., n, n)
+    X_new : ndarray, shape (..., n, n)
         Set of normalized matrices, same dimensions as X.
+
+    Notes
+    -----
+    .. versionadded:: 0.2.7
+    .. versionchanged:: 0.3
+        Add ``"corr"`` option to parameter ``norm``.
+    .. versionchanged:: 0.12
+        Add support for NumPy and PyTorch.
     """
     xp = get_namespace(X)
     if not is_square(X):
@@ -979,12 +1000,12 @@ def normalize(X, norm):
         raise ValueError(f"{norm} is not a supported normalization")
 
     denom = xp.expand_dims(denom, axis=tuple(range(denom.ndim, X.ndim)))
-    Xn = X / denom
+    X_new = X / denom
 
     if norm == "corr":
-        Xn.real = xp.clip(Xn.real, -1, 1)
+        X_new.real = xp.clip(X_new.real, -1, 1)
 
-    return Xn
+    return X_new
 
 
 def get_nondiag_weight(X):

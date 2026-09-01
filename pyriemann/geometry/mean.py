@@ -15,6 +15,15 @@ from .geodesic import geodesic_riemann, geodesic_thompson
 from .tangentspace import log_map_wasserstein, exp_map_wasserstein
 
 
+def _mean_riemann_2mats(X, sample_weight):
+    """Private function for weighted Riemannian mean of 2 matrices.
+
+    Weights are normalized, so the position on the geodesic from the
+    first to the second matrix is the weight of the second one.
+    """
+    return geodesic_riemann(X[0], X[1], alpha=sample_weight[1])
+
+
 @_vectorize_nd(n_axes=3)
 def mean_ale(X, *, tol=10e-7, maxiter=50, sample_weight=None, init=None):
     """AJD-based log-Euclidean (ALE) mean of SPD/HPD matrices.
@@ -36,6 +45,8 @@ def mean_ale(X, *, tol=10e-7, maxiter=50, sample_weight=None, init=None):
         A SPD/HPD matrix used to initialize the gradient descent.
         If None, the joint diagonalizer of input matrices is used.
 
+        .. versionadded:: 0.8
+
     Returns
     -------
     M : ndarray, shape (..., n, n)
@@ -44,6 +55,10 @@ def mean_ale(X, *, tol=10e-7, maxiter=50, sample_weight=None, init=None):
     Notes
     -----
     .. versionadded:: 0.2.4
+    .. versionchanged:: 0.5
+        Add support for HPD matrices.
+    .. versionchanged:: 0.8
+        Add parameter ``init``.
     .. versionchanged:: 0.12
         Add support for NumPy and PyTorch.
 
@@ -89,7 +104,7 @@ def mean_ale(X, *, tol=10e-7, maxiter=50, sample_weight=None, init=None):
 
 
 @_vectorize_nd(n_axes=3)
-def mean_alm(X, *, tol=1e-14, maxiter=100, sample_weight=None, **kwargs):
+def mean_alm(X, *, tol=1e-14, maxiter=100, sample_weight=None):
     r"""Ando-Li-Mathias (ALM) mean of SPD/HPD matrices.
 
     Ando-Li-Mathias (ALM) mean is computed recursively, generalizing from [1]_:
@@ -120,6 +135,8 @@ def mean_alm(X, *, tol=1e-14, maxiter=100, sample_weight=None, **kwargs):
     Notes
     -----
     .. versionadded:: 0.3
+    .. versionchanged:: 0.5
+        Add support for HPD matrices.
     .. versionchanged:: 0.12
         Add support for NumPy and PyTorch.
 
@@ -142,9 +159,7 @@ def mean_alm(X, *, tol=1e-14, maxiter=100, sample_weight=None, **kwargs):
         return X[0]
 
     if n_matrices == 2:
-        alpha = sample_weight[1] / sample_weight[0] / 2
-        M = geodesic_riemann(X[0], X[1], alpha=alpha)
-        return M
+        return _mean_riemann_2mats(X, sample_weight)
 
     M = X
     M_iter = xp.zeros_like(M)
@@ -210,9 +225,7 @@ def mean_bmp(X, *, tol=1e-7, maxiter=50, sample_weight=None):
         return X[0]
 
     if n_matrices == 2:
-        alpha = sample_weight[1] / sample_weight[0] / 2
-        M = geodesic_riemann(X[0], X[1], alpha=alpha)
-        return M
+        return _mean_riemann_2mats(X, sample_weight)
 
     M = X
     M_iter = xp.zeros_like(M)
@@ -238,7 +251,7 @@ def mean_bmp(X, *, tol=1e-7, maxiter=50, sample_weight=None):
 
 
 @_vectorize_nd(n_axes=3)
-def mean_cheap(X, *, tol=1e-7, maxiter=50, sample_weight=None):
+def mean_cheap(X, *, tol=1e-7, maxiter=50, **kwargs):
     """Cheap mean of SPD/HPD matrices.
 
     Cheap mean is computed as described in [1]_.
@@ -251,8 +264,6 @@ def mean_cheap(X, *, tol=1e-7, maxiter=50, sample_weight=None):
         Tolerance to stop the gradient descent.
     maxiter : int, default=50
         Maximum number of iterations.
-    sample_weight : None | ndarray, shape (n_matrices,), default=None
-        Weights for each matrix. If None, it uses equal weights.
 
     Returns
     -------
@@ -275,15 +286,12 @@ def mean_cheap(X, *, tol=1e-7, maxiter=50, sample_weight=None):
     """  # noqa
     xp = get_namespace(X)
     n_matrices, _, _ = X.shape
-    sample_weight = check_weights(sample_weight, n_matrices, like=X)
 
     if n_matrices == 1:
         return X[0]
 
     if n_matrices == 2:
-        alpha = sample_weight[1] / sample_weight[0] / 2
-        M = geodesic_riemann(X[0], X[1], alpha=alpha)
-        return M
+        return geodesic_riemann(X[0], X[1], alpha=0.5)
 
     M = X
     M_iter = xp.zeros_like(M)
@@ -377,6 +385,11 @@ def mean_euclid(X, sample_weight=None, **kwargs):
 
     Notes
     -----
+    .. versionadded:: 0.1
+    .. versionchanged:: 0.2.3
+        Add parameter ``sample_weight``.
+    .. versionchanged:: 0.5
+        Add support for complex matrices.
     .. versionchanged:: 0.12
         Add support for NumPy and PyTorch.
 
@@ -414,6 +427,9 @@ def mean_harmonic(X, sample_weight=None, **kwargs):
 
     Notes
     -----
+    .. versionadded:: 0.2.4
+    .. versionchanged:: 0.5
+        Add support for complex invertible matrices.
     .. versionchanged:: 0.12
         Add support for NumPy and PyTorch.
 
@@ -449,6 +465,9 @@ def mean_kullback_sym(X, sample_weight=None, **kwargs):
 
     Notes
     -----
+    .. versionadded:: 0.2.4
+    .. versionchanged:: 0.5
+        Add support for HPD matrices.
     .. versionchanged:: 0.12
         Add support for NumPy and PyTorch.
 
@@ -566,6 +585,11 @@ def mean_logdet(X, *, tol=10e-5, maxiter=50, init=None, sample_weight=None):
 
     Notes
     -----
+    .. versionadded:: 0.1
+    .. versionchanged:: 0.2.3
+        Add parameter ``sample_weight``.
+    .. versionchanged:: 0.5
+        Add support for HPD matrices.
     .. versionchanged:: 0.12
         Add support for NumPy and PyTorch.
 
@@ -628,6 +652,11 @@ def mean_logeuclid(X, sample_weight=None, **kwargs):
 
     Notes
     -----
+    .. versionadded:: 0.1
+    .. versionchanged:: 0.2.3
+        Add parameter ``sample_weight``.
+    .. versionchanged:: 0.5
+        Add support for HPD matrices.
     .. versionchanged:: 0.12
         Add support for NumPy and PyTorch.
 
@@ -678,6 +707,8 @@ def mean_power(X, p, *, sample_weight=None, zeta=10e-10, maxiter=100,
         A SPD/HPD matrix used to initialize the gradient descent.
         If None, the weighted power Euclidean mean is used.
 
+        .. versionadded:: 0.7
+
     Returns
     -------
     M : ndarray, shape (..., n, n)
@@ -686,6 +717,10 @@ def mean_power(X, p, *, sample_weight=None, zeta=10e-10, maxiter=100,
     Notes
     -----
     .. versionadded:: 0.3
+    .. versionchanged:: 0.5
+        Add support for HPD matrices.
+    .. versionchanged:: 0.7
+        Add parameter ``init``.
     .. versionchanged:: 0.12
         Add support for NumPy and PyTorch.
 
@@ -786,6 +821,8 @@ def mean_poweuclid(X, p, *, sample_weight=None, **kwargs):
 
     Notes
     -----
+    .. versionchanged:: 0.5
+        Add support for HPD matrices.
     .. versionchanged:: 0.12
         Add support for NumPy and PyTorch.
 
@@ -827,7 +864,8 @@ def mean_riemann(X, *, tol=10e-9, maxiter=50, init=None, sample_weight=None):
 
     with :math:`w` being the weights which sum to 1.
 
-    For the convergence, the implemented stopping criterion comes from [2]_.
+    For the convergence of the gradient descent algorithm,
+    the implemented stopping criterion comes from [2]_.
 
     Parameters
     ----------
@@ -850,6 +888,13 @@ def mean_riemann(X, *, tol=10e-9, maxiter=50, init=None, sample_weight=None):
 
     Notes
     -----
+    .. versionadded:: 0.1
+    .. versionchanged:: 0.2
+        Add parameter ``init``.
+    .. versionchanged:: 0.2.3
+        Add parameter ``sample_weight``.
+    .. versionchanged:: 0.5
+        Add support for HPD matrices.
     .. versionchanged:: 0.12
         Add support for NumPy and PyTorch.
 
@@ -902,7 +947,7 @@ def mean_riemann(X, *, tol=10e-9, maxiter=50, init=None, sample_weight=None):
 
 
 @_vectorize_nd(n_axes=3)
-def mean_thompson(X, *, tol=1e-6, maxiter=50, init=None, sample_weight=None):
+def mean_thompson(X, *, tol=1e-6, maxiter=50, init=None, **kwargs):
     """Mean of SPD/HPD matrices according to the Thompson metric.
 
     The Thompson mean of SPD/HPD matrices is described in [1]_.
@@ -918,8 +963,6 @@ def mean_thompson(X, *, tol=1e-6, maxiter=50, init=None, sample_weight=None):
     init : None | ndarray, shape (n, n), default=None
         A SPD/HPD matrix used to initialize the gradient descent.
         If None, the weighted Euclidean mean is used.
-    sample_weight : None
-        Not used.
 
     Returns
     -------
@@ -992,6 +1035,9 @@ def mean_wasserstein(X, tol=10e-9, maxiter=50, init=None, sample_weight=None):
 
     Notes
     -----
+    .. versionadded:: 0.2.4
+    .. versionchanged:: 0.5
+        Add support for HPD matrices.
     .. versionchanged:: 0.12
         Add support for NumPy and PyTorch.
 
@@ -1065,6 +1111,8 @@ def gmean(X, *args, metric="riemann", sample_weight=None, **kwargs):
         Set of matrices.
     *args : tuple
         The arguments passed to the sub function.
+
+        .. versionadded:: 0.8
     metric : string | callable, default="riemann"
         Metric for mean estimation, can be:
         "ale", "alm", "bmp", "cheap", "chol", "euclid", "harmonic",
@@ -1077,6 +1125,8 @@ def gmean(X, *args, metric="riemann", sample_weight=None, **kwargs):
     **kwargs : dict
         The keyword arguments passed to the sub function.
 
+        .. versionadded:: 0.5
+
     Returns
     -------
     M : ndarray, shape (..., n, n)
@@ -1084,8 +1134,15 @@ def gmean(X, *args, metric="riemann", sample_weight=None, **kwargs):
 
     Notes
     -----
+    .. versionadded:: 0.1
+    .. versionchanged:: 0.2.3
+        Add parameter ``sample_weight``.
+    .. versionchanged:: 0.5
+        Add support for HPD matrices.
+    .. versionchanged:: 0.8
+        Allow to call ``"power"`` and ``"poweuclid"`` metrics.
     .. versionchanged:: 0.11
-        Rename mean_covariance into gmean.
+        Rename ``mean_covariance`` into ``gmean``.
 
     References
     ----------
@@ -1166,6 +1223,8 @@ def maskedmean_riemann(X, masks, *, tol=10e-9, maxiter=100, init=None,
     Notes
     -----
     .. versionadded:: 0.3
+    .. versionchanged:: 0.5
+        Add support for HPD matrices.
     .. versionchanged:: 0.12
         Add support for NumPy and PyTorch.
 
@@ -1247,6 +1306,8 @@ def nanmean_riemann(X, tol=10e-9, maxiter=100, init=None, sample_weight=None):
     Notes
     -----
     .. versionadded:: 0.3
+    .. versionchanged:: 0.5
+        Add support for HPD matrices.
     .. versionchanged:: 0.12
         Add support for NumPy and PyTorch.
 
