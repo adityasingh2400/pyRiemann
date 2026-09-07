@@ -1,6 +1,7 @@
 import numpy as np
 from numpy.testing import assert_array_equal
 import pytest
+from sklearn.base import clone
 from pytest import approx
 
 from pyriemann.clustering import (
@@ -338,6 +339,26 @@ def test_meanshift(kernel, bandwidth, metric, get_mats, capsys):
     assert clt.modes_.shape[1:] == (n_channels, n_channels)
     assert clt.labels_.shape == (n_matrices,)
     assert capsys.readouterr().out == ""
+
+
+@pytest.mark.parametrize("clust", clusts)
+def test_clustering_get_params(clust):
+    """Test sklearn compliance of get_params, set_params and clone"""
+    clt = clust()
+
+    params = clt.get_params()
+    assert clone(clt).get_params() == params
+
+    clt.set_params(metric="logeuclid")
+    assert clone(clt).get_params()["metric"] == "logeuclid"
+
+
+def test_kmeansperclasstransform_get_params():
+    """Test that KmeansPerClassTransform exposes all Kmeans parameters"""
+    assert (
+        KmeansPerClassTransform().get_params().keys()
+        == Kmeans().get_params().keys()
+    )
 
 
 def test_gaussian(get_mats, get_weights):
