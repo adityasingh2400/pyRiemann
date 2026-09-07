@@ -59,6 +59,13 @@ v0.13.dev
   for two matrices, which were using a wrong position on the geodesic when ``sample_weight`` is not uniform.
   :pr:`480` by :user:`adityasingh2400`
 
+- Fix the loss and the gradient minimized by
+  :class:`pyriemann.transfer.TLRotate` in manifold: the loss now returns the
+  sum of squared distances it is documented to minimize and that the gradient
+  is derived from, and the gradient for ``metric="riemann"`` no longer
+  diagonalizes a non-symmetric matrix with ``numpy.linalg.eigh``.
+  :pr:`484` by :user:`adityasingh2400`
+
 v0.12 (July 2026)
 -----------------
 
