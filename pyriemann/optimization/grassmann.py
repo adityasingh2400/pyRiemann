@@ -206,6 +206,8 @@ def _get_rotation_manifold(
     Notes
     -----
     .. versionadded:: 0.4
+    .. versionchanged:: 0.13
+        Correct loss and gradient.
 
     References
     ----------

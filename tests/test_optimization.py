@@ -3,19 +3,18 @@ from numpy.testing import assert_array_almost_equal
 import pytest
 from pytest import approx
 
-from pyriemann.datasets.simulated import make_matrices
 from pyriemann.geometry.distance import distance
 from pyriemann.optimization.grassmann import _grad, _loss
 
 
 @pytest.mark.parametrize("metric", ["euclid", "riemann"])
-def test_grassmann_loss(rndstate, metric):
+def test_grassmann_loss(metric, get_mats, get_weights):
     """Test that loss is the weighted sum of squared distances"""
     n_matrices, n_channels = 3, 4
-    X = make_matrices(n_matrices, n_channels, "spd", rs=rndstate)
-    Y = make_matrices(n_matrices, n_channels, "spd", rs=rndstate)
-    weights = np.array([0.5, 0.3, 0.2])
-    Q = np.linalg.qr(rndstate.randn(n_channels, n_channels))[0]
+    X = get_mats(n_matrices, n_channels, "spd")
+    Y = get_mats(n_matrices, n_channels, "spd")
+    weights = get_weights(n_matrices)
+    Q = get_mats(1, n_channels, "orth")[0]
 
     assert _loss(Q, X, Y, weights, metric=metric) == approx(
         weights @ distance(X, Q @ Y @ Q.T, metric=metric) ** 2
@@ -23,13 +22,13 @@ def test_grassmann_loss(rndstate, metric):
 
 
 @pytest.mark.parametrize("metric", ["euclid", "riemann"])
-def test_grassmann_grad(rndstate, metric):
+def test_grassmann_grad(metric, get_mats, get_weights):
     """Test that gradient is the derivative of the loss"""
     n_matrices, n_channels = 3, 4
-    X = make_matrices(n_matrices, n_channels, "spd", rs=rndstate)
-    Y = make_matrices(n_matrices, n_channels, "spd", rs=rndstate)
-    weights = np.array([0.5, 0.3, 0.2])
-    Q = np.linalg.qr(rndstate.randn(n_channels, n_channels))[0]
+    X = get_mats(n_matrices, n_channels, "spd")
+    Y = get_mats(n_matrices, n_channels, "spd")
+    weights = get_weights(n_matrices)
+    Q = get_mats(1, n_channels, "orth")[0]
 
     eps = 1e-6
     grad_num = np.zeros((n_channels, n_channels))
