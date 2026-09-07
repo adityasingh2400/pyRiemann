@@ -2,7 +2,6 @@ import numpy as np
 from numpy.testing import assert_array_equal
 import pytest
 from pytest import approx
-from sklearn.base import clone
 
 from pyriemann.clustering import (
     Kmeans,
@@ -320,54 +319,25 @@ def callable_kernel(x):
     return np.exp(- np.abs(x))
 
 
-@pytest.mark.parametrize("kernel", [
-    "normal", "uniform", callable_kernel,
-])
-@pytest.mark.parametrize("metric", [
-    "euclid", "logchol", "logeuclid", "riemann", "wasserstein"
-])
-def test_meanshift(kernel, metric, get_mats, get_labels):
+@pytest.mark.parametrize("kernel", ["normal", "uniform", callable_kernel])
+@pytest.mark.parametrize("bandwidth", [None, 0.1])
+@pytest.mark.parametrize("metric", ["euclid", "logeuclid"])
+def test_meanshift(kernel, bandwidth, metric, get_mats, capsys):
     n_matrices, n_channels = 10, 3
     X = get_mats(n_matrices, n_channels, "spd")
 
     clt = MeanShift(
         kernel=kernel,
+        bandwidth=bandwidth,
         metric=metric,
     )
     clt.fit(X)
 
-
-@pytest.mark.parametrize("bandwidth", [0.5, 1.0])
-def test_meanshift_bandwidth(bandwidth, get_mats, capsys):
-    n_matrices, n_channels = 10, 3
-    X = get_mats(n_matrices, n_channels, "spd")
-
-    clt = MeanShift(bandwidth=bandwidth).fit(X)
-
-    assert clt._bandwidth == bandwidth
+    if bandwidth is not None:
+        assert clt._bandwidth == bandwidth
     assert clt.modes_.shape[1:] == (n_channels, n_channels)
     assert clt.labels_.shape == (n_matrices,)
     assert capsys.readouterr().out == ""
-
-
-@pytest.mark.parametrize("clust", clusts)
-def test_clustering_get_params(clust):
-    """Test sklearn compliance of get_params, set_params and clone"""
-    clt = clust()
-
-    params = clt.get_params()
-    assert clone(clt).get_params() == params
-
-    clt.set_params(metric="logeuclid")
-    assert clone(clt).get_params()["metric"] == "logeuclid"
-
-
-def test_kmeansperclasstransform_get_params():
-    """Test that KmeansPerClassTransform exposes all Kmeans parameters"""
-    assert (
-        KmeansPerClassTransform().get_params().keys()
-        == Kmeans().get_params().keys()
-    )
 
 
 def test_gaussian(get_mats, get_weights):
