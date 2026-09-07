@@ -64,7 +64,7 @@ v0.13.dev
   sum of squared distances it is documented to minimize and that the gradient
   is derived from, and the gradient for ``metric="riemann"`` no longer
   diagonalizes a non-symmetric matrix with ``numpy.linalg.eigh``.
-  :pr:`484` by :user:`adityasingh2400`
+  :pr:`492` by :user:`adityasingh2400`
 
 v0.12 (July 2026)
 -----------------
