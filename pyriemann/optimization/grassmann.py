@@ -4,7 +4,6 @@ import warnings
 
 import numpy as np
 
-from ..geometry.base import invsqrtm, logm, sqrtm
 from ..geometry.distance import distance
 from ..utils._check import check_weights
 
@@ -35,7 +34,7 @@ def _retract(X, v):
 def _loss(Q, X, Y, weights, metric="euclid"):
     """Loss function for estimating the rotation matrix."""
 
-    return weights @ distance(X, Q @ Y @ Q.T, metric=metric, squared=True)
+    return weights @ distance(X, Q @ Y @ Q.T, metric=metric)
 
 
 def _grad(Q, X, Y, weights, metric="euclid"):
@@ -45,13 +44,11 @@ def _grad(Q, X, Y, weights, metric="euclid"):
         return np.einsum("a,abc->bc", weights, -4 * (X - Q @ Y @ Q.T) @ Q @ Y)
 
     elif metric == "riemann":
-        # logm of X^-1 S, with S = Q Y Q^T. This product of two SPD matrices
-        # is not symmetric, so it cannot be diagonalized by eigh. It is
-        # however similar to the SPD matrix X^-1/2 S X^-1/2, which is:
-        # logm(X^-1 S) = X^-1/2 logm(X^-1/2 S X^-1/2) X^1/2
-        X_invsqrt, X_sqrt = invsqrtm(X), sqrtm(X)
-        S = Q @ Y @ Q.T
-        logM = X_invsqrt @ logm(X_invsqrt @ S @ X_invsqrt) @ X_sqrt
+        M = np.linalg.solve(X, Q) @ Y @ Q.T
+        eigvals, eigvecs = np.linalg.eigh(M)
+        logeigvals = np.expand_dims(np.log(eigvals), -2)
+        inveigvecs = np.linalg.solve(eigvecs, np.eye(eigvecs.shape[-1]))
+        logM = (eigvecs * logeigvals) @ inveigvecs
         return np.einsum("a,abc->bc", weights, 4 * logM @ Q)
 
     else:
