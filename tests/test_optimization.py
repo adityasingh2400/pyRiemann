@@ -7,6 +7,9 @@ from pyriemann.geometry.distance import distance
 from pyriemann.optimization.grassmann import _grad, _loss
 
 
+pytestmark = pytest.mark.numpy_only
+
+
 @pytest.mark.parametrize("metric", ["euclid", "riemann"])
 def test_grassmann_loss(metric, get_mats, get_weights):
     """Test that loss is the weighted sum of squared distances"""
