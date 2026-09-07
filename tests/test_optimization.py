@@ -4,7 +4,11 @@ import pytest
 from pytest import approx
 
 from pyriemann.geometry.distance import distance
-from pyriemann.optimization.grassmann import _grad, _loss
+from pyriemann.optimization.grassmann import (
+    _get_rotation_manifold,
+    _grad,
+    _loss,
+)
 
 
 pytestmark = pytest.mark.numpy_only
@@ -47,3 +51,21 @@ def test_grassmann_grad(metric, get_mats, get_weights):
     grad = _grad(Q, X, Y, weights, metric=metric)
     assert grad.dtype == grad_num.dtype
     assert_array_almost_equal(grad, grad_num, decimal=5)
+
+
+def _is_orth(X):
+    return X @ X.T == approx(np.eye(X.shape[0]))
+
+
+@pytest.mark.parametrize("metric", ["euclid", "riemann"])
+def test_get_rotation_manifold(metric, get_mats, get_weights):
+    """Test that the rotation is a rotation matrix"""
+    n_matrices, n_channels = 3, 4
+    X_source = get_mats(n_matrices, n_channels, "spd")
+    X_target = get_mats(n_matrices, n_channels, "spd")
+    weights = get_weights(n_matrices)
+
+    Q = _get_rotation_manifold(X_source, X_target, weights, metric=metric)
+
+    assert Q.shape == (n_channels, n_channels)
+    assert _is_orth(Q)
