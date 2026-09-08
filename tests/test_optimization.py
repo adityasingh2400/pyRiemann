@@ -14,6 +14,10 @@ from pyriemann.optimization.grassmann import (
 pytestmark = pytest.mark.numpy_only
 
 
+def _is_orth(X):
+    return X @ X.T == approx(np.eye(X.shape[0]))
+
+
 @pytest.mark.parametrize("metric", ["euclid", "riemann"])
 def test_grassmann_loss(metric, get_mats, get_weights):
     """Test that loss is the weighted sum of squared distances"""
@@ -31,7 +35,7 @@ def test_grassmann_loss(metric, get_mats, get_weights):
 @pytest.mark.parametrize("metric", ["euclid", "riemann"])
 def test_grassmann_grad(metric, get_mats, get_weights):
     """Test that gradient is the derivative of the loss"""
-    n_matrices, n_channels = 3, 4
+    n_matrices, n_channels = 5, 3
     X = get_mats(n_matrices, n_channels, "spd")
     Y = get_mats(n_matrices, n_channels, "spd")
     weights = get_weights(n_matrices)
@@ -53,14 +57,9 @@ def test_grassmann_grad(metric, get_mats, get_weights):
     assert_array_almost_equal(grad, grad_num, decimal=5)
 
 
-def _is_orth(X):
-    return X @ X.T == approx(np.eye(X.shape[0]))
-
-
 @pytest.mark.parametrize("metric", ["euclid", "riemann"])
 def test_get_rotation_manifold(metric, get_mats, get_weights):
-    """Test that the rotation is a rotation matrix"""
-    n_matrices, n_channels = 3, 4
+    n_matrices, n_channels = 5, 4
     X_source = get_mats(n_matrices, n_channels, "spd")
     X_target = get_mats(n_matrices, n_channels, "spd")
     weights = get_weights(n_matrices)
