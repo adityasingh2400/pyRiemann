@@ -41,7 +41,6 @@ from pyriemann.transfer import (
 from pyriemann.utils._check import check_weights
 
 pytestmark = pytest.mark.numpy_only
-rndstate = 1234
 
 
 ###############################################################################
