@@ -281,10 +281,11 @@ class KmeansPerClassTransform(SpdTransfMixin, BaseEstimator):
 
     Parameters
     ----------
-    n_clusters : int, default=2
-        Number of clusters.
     **params : dict
         The keyword arguments passed to :class:`pyriemann.clustering.Kmeans`.
+        They default to the defaults of :class:`pyriemann.clustering.Kmeans`,
+        and are exposed by ``get_params()`` and ``set_params()`` so that the
+        estimator can be cloned and used in a scikit-learn search.
 
     Attributes
     ----------
@@ -299,17 +300,55 @@ class KmeansPerClassTransform(SpdTransfMixin, BaseEstimator):
     .. versionadded:: 0.2
     .. versionchanged:: 0.8
         Add support for HPD matrices.
+    .. versionchanged:: 0.13
+        Store the parameters so that ``get_params()``, ``set_params()`` and
+        ``clone()`` work.
 
     See Also
     --------
     Kmeans
     """
 
-    def __init__(self, n_clusters=2, **params):
+    def __init__(self, **params):
         """Init."""
-        params["n_clusters"] = n_clusters
-        self._km = Kmeans(**params)
-        self.metric = self._km.metric
+        defaults = Kmeans().get_params()
+        defaults.update(params)
+        self.params = defaults
+        for name, value in defaults.items():
+            setattr(self, name, value)
+
+    def get_params(self, deep=True):
+        """Get the parameters passed to :class:`pyriemann.clustering.Kmeans`.
+
+        Parameters
+        ----------
+        deep : bool, default=True
+            Unused, kept for scikit-learn compatibility.
+
+        Returns
+        -------
+        params : dict
+            Parameter names mapped to their values.
+        """
+        return self.params.copy()
+
+    def set_params(self, **params):
+        """Set the parameters passed to :class:`pyriemann.clustering.Kmeans`.
+
+        Parameters
+        ----------
+        **params : dict
+            Parameters to set.
+
+        Returns
+        -------
+        self : KmeansPerClassTransform instance
+            The KmeansPerClassTransform instance.
+        """
+        for name, value in params.items():
+            self.params[name] = value
+            setattr(self, name, value)
+        return self
 
     def fit(self, X, y):
         """Fit the clusters for each class.
@@ -327,6 +366,8 @@ class KmeansPerClassTransform(SpdTransfMixin, BaseEstimator):
             The KmeansPerClassTransform instance.
         """
         self.classes_ = np.unique(y)
+        self._km = Kmeans(**self.params)
+        self.metric = self._km.metric
 
         covmeans = []
         for c in self.classes_:

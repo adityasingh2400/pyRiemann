@@ -76,6 +76,12 @@ v0.13.dev
   each source domain onto the target domain.
   :pr:`481` by :user:`adityasingh2400`
 
+- Fix ``__init__`` of
+  :class:`pyriemann.clustering.KmeansPerClassTransform`, which did not store
+  its parameters, so that ``get_params()``, ``set_params()``, ``clone()`` and
+  ``cross_val_score()`` raised an ``AttributeError``.
+  :pr:`493` by :user:`adityasingh2400`
+
 v0.12 (July 2026)
 -----------------
 
